@@ -10,6 +10,12 @@ Uses a Claude Code [Stop hook](https://docs.anthropic.com/s/claude-code-hooks) t
 uv sync
 ```
 
+Start the daemon:
+
+```bash
+speakeasy serve
+```
+
 Add the hook to `~/.claude/settings.json`:
 
 ```json
@@ -20,9 +26,9 @@ Add the hook to `~/.claude/settings.json`:
         "hooks": [
           {
             "type": "command",
-            "command": "uv run --project /path/to/speakeasy speakeasy",
+            "command": "uv run --project /path/to/speakeasy speakeasy post",
             "async": true,
-            "timeout": 120
+            "timeout": 5
           }
         ]
       }
@@ -34,19 +40,25 @@ Add the hook to `~/.claude/settings.json`:
 ## Usage
 
 ```bash
-touch ~/.speakeasy-on    # turn on
-rm ~/.speakeasy-on       # turn off
-speakeasy --stop         # silence mid-speech
+speakeasy serve              # start the daemon (localhost:7700)
+speakeasy stop               # silence mid-speech (shh)
+speakeasy sessions           # list active sessions
+speakeasy mute <session_id>  # toggle mute for a session
+speakeasy speak --raw        # speak from stdin directly (no daemon)
 ```
+
+Open `http://localhost:7700` for the web UI — manage sessions, mute/unmute, and stop speech from your browser or phone.
 
 ## Engines
 
-Speakeasy ships with the macOS `say` engine. The engine layer is modular — add new backends by subclassing `TTSEngine`.
+Speakeasy ships with the macOS `say` engine. The engine layer is modular — engines implement a `generate()` method that produces an audio file, and playback is handled uniformly via `afplay`.
 
 ```bash
 # pick a voice
-speakeasy --voice Samantha --raw <<< "Hello from Speakeasy"
+speakeasy serve --voice Samantha
 
 # adjust speed (words per minute)
-speakeasy --voice Samantha --rate 220 --raw <<< "A bit faster now"
+speakeasy serve --voice Samantha --rate 220
 ```
+
+Add new backends (OpenAI TTS, ElevenLabs, etc.) by subclassing `TTSEngine`.
