@@ -1,0 +1,38 @@
+[project]
+name = "speakeasy"
+version = "0.1.0"
+description = "TTS output for Claude Code — hear your answers spoken aloud"
+readme = "README.md"
+authors = [
+    { name = "davenpi", email = "davenport.ianc@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = []
+
+[project.scripts]
+speakeasy = "speakeasy:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "pre-commit>=4.5.1",
+    "pytest>=9.0.2",
+    "ruff>=0.15.6",
+]
+
+[tool.ruff]
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["speakeasy"]
+
+[tool.pytest.ini_options]
+addopts = "--no-header -rN"
+testpaths = ["tests"]
+pythonpath = ["src"]
