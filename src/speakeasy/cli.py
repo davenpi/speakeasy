@@ -55,7 +55,7 @@ def cmd_serve(args: object) -> None:
     run_server(
         engine=engine,
         port=getattr(args, "port", None) or DEFAULT_PORT,
-        interrupt=not getattr(args, "no_interrupt", False),
+        interrupt=getattr(args, "interrupt", False),
     )
 
 
@@ -90,6 +90,9 @@ def cmd_speak(args: object) -> None:
 
 def cmd_post(args: object) -> None:
     """Read stdin (hook payload) and POST it to the daemon."""
+    if not TOGGLE_FILE.exists():
+        return
+
     input_data = sys.stdin.read()
     if not input_data.strip():
         return
