@@ -1,6 +1,6 @@
 import pytest
 
-from speakeasy import get_engine
+from speakeasy.cli import get_engine
 from speakeasy.engines.macos import MacOSSayEngine
 
 

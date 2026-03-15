@@ -1,75 +1,79 @@
 import argparse
-import json
-import sys
-from pathlib import Path
 
-from .engines.macos import MacOSSayEngine
-from .text import clean_for_speech
+from .cli import (
+    cmd_mute,
+    cmd_post,
+    cmd_serve,
+    cmd_sessions,
+    cmd_speak,
+    cmd_stop,
+)
+from .server import DEFAULT_PORT
 
-TOGGLE_FILE = Path.home() / ".speakeasy-on"
 
-
-def get_engine(name: str, **kwargs):
-    engines = {
-        "say": MacOSSayEngine,
-    }
-    if name not in engines:
-        raise ValueError(f"Unknown engine: {name!r}. Available: {', '.join(engines)}")
-    return engines[name](**kwargs)
+def _add_engine_args(parser: argparse.ArgumentParser) -> None:
+    """Add shared engine arguments to a parser."""
+    parser.add_argument("--engine", default="say", help="TTS engine (default: say)")
+    parser.add_argument("--voice", default=None, help="Voice name")
+    parser.add_argument(
+        "--rate", type=int, default=None, help="Speech rate (words per minute)"
+    )
 
 
 def main() -> None:
+    """Entry point for the speakeasy CLI."""
     parser = argparse.ArgumentParser(description="Speakeasy — TTS for Claude Code")
-    parser.add_argument("--engine", default="say", help="TTS engine (default: say)")
-    parser.add_argument("--voice", default=None, help="Voice name (engine-specific)")
-    parser.add_argument(
-        "--rate", type=int, default=None, help="Speech rate in words per minute"
+    subs = parser.add_subparsers(dest="command")
+
+    # speakeasy serve
+    p_serve = subs.add_parser("serve", help="Start the daemon")
+    p_serve.add_argument(
+        "--port", type=int, default=DEFAULT_PORT, help="Port (default: 7700)"
     )
-    parser.add_argument(
-        "--raw",
+    p_serve.add_argument(
+        "--no-interrupt",
         action="store_true",
-        help="Read plain text from stdin instead of hook JSON",
+        help="Queue speech instead of interrupting",
     )
-    parser.add_argument(
-        "--stop", action="store_true", help="Stop any in-progress speech"
+    _add_engine_args(p_serve)
+
+    # speakeasy speak (direct, no daemon)
+    p_speak = subs.add_parser("speak", help="Speak from stdin (no daemon)")
+    p_speak.add_argument(
+        "--raw", action="store_true", help="Read plain text instead of hook JSON"
     )
+    _add_engine_args(p_speak)
+
+    # speakeasy post (forward stdin to daemon)
+    p_post = subs.add_parser("post", help="Forward stdin to daemon")
+    p_post.add_argument("--port", type=int, default=DEFAULT_PORT)
+
+    # speakeasy stop
+    p_stop = subs.add_parser("stop", help="Stop current speech")
+    p_stop.add_argument("--port", type=int, default=DEFAULT_PORT)
+
+    # speakeasy sessions
+    p_sessions = subs.add_parser("sessions", help="List active sessions")
+    p_sessions.add_argument("--port", type=int, default=DEFAULT_PORT)
+
+    # speakeasy mute <session_id>
+    p_mute = subs.add_parser("mute", help="Toggle mute for a session")
+    p_mute.add_argument("session_id", help="Session ID to toggle")
+    p_mute.add_argument("--port", type=int, default=DEFAULT_PORT)
+
     args = parser.parse_args()
 
-    if args.stop:
-        engine = get_engine(args.engine)
-        engine.stop()
-        return
+    commands = {
+        "serve": cmd_serve,
+        "speak": cmd_speak,
+        "post": cmd_post,
+        "stop": cmd_stop,
+        "sessions": cmd_sessions,
+        "mute": cmd_mute,
+    }
 
-    # Check toggle — exit silently if speakeasy is off
-    if not TOGGLE_FILE.exists():
-        return
-
-    input_data = sys.stdin.read()
-    if not input_data.strip():
-        return
-
-    if args.raw:
-        text = input_data
+    if args.command is None:
+        # Legacy mode: no subcommand means old-style direct speak from stdin
+        cmd_speak(args)
     else:
-        try:
-            payload = json.loads(input_data)
-            text = payload.get("last_assistant_message", "")
-        except json.JSONDecodeError:
-            # Fall back to treating input as plain text
-            text = input_data
-
-    if not text.strip():
-        return
-
-    text = clean_for_speech(text)
-    if not text:
-        return
-
-    engine_kwargs = {}
-    if args.voice:
-        engine_kwargs["voice"] = args.voice
-    if args.rate:
-        engine_kwargs["rate"] = args.rate
-
-    engine = get_engine(args.engine, **engine_kwargs)
-    engine.speak(text)
+        commands[args.command](args)

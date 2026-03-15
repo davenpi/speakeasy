@@ -9,8 +9,7 @@ class TTSEngine(ABC):
         """Speak the given text aloud."""
         ...
 
-    @staticmethod
     @abstractmethod
-    def stop() -> None:
+    def stop(self) -> None:
         """Stop any in-progress speech."""
         ...

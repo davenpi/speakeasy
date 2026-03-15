@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Speakeasy</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+        background: #1a1a1a;
+        color: #e0e0e0;
+        padding: 2rem;
+        max-width: 600px;
+        margin: 0 auto;
+      }
+      h1 {
+        font-size: 1.4rem;
+        margin-bottom: 0.25rem;
+      }
+      .subtitle {
+        color: #666;
+        font-size: 0.8rem;
+        margin-bottom: 1.5rem;
+      }
+      .controls {
+        margin-bottom: 1.5rem;
+      }
+      button {
+        background: #333;
+        color: #e0e0e0;
+        border: 1px solid #555;
+        padding: 0.4rem 0.75rem;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 0.85rem;
+      }
+      button:hover {
+        background: #444;
+      }
+      button.stop {
+        background: #8b2020;
+        border-color: #a33;
+        padding: 0.5rem 1rem;
+        font-size: 0.9rem;
+      }
+      button.stop:hover {
+        background: #a33;
+      }
+      button.mute-on {
+        background: #555;
+        border-color: #777;
+      }
+      button.remove {
+        background: transparent;
+        border: none;
+        color: #666;
+        font-size: 0.8rem;
+        padding: 0.3rem 0.5rem;
+      }
+      button.remove:hover {
+        color: #a33;
+      }
+      .sessions {
+        border: 1px solid #333;
+        border-radius: 8px;
+        overflow: hidden;
+      }
+      .session {
+        display: flex;
+        align-items: center;
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid #333;
+        gap: 0.75rem;
+      }
+      .session:last-child {
+        border-bottom: none;
+      }
+      .session-info {
+        flex: 1;
+        min-width: 0;
+      }
+      .session-id {
+        font-family: monospace;
+        font-size: 0.85rem;
+      }
+      .session-actions {
+        display: flex;
+        gap: 0.4rem;
+        align-items: center;
+      }
+      .muted {
+        opacity: 0.5;
+      }
+      .empty {
+        padding: 2rem;
+        text-align: center;
+        color: #666;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Speakeasy</h1>
+    <p class="subtitle">TTS for Claude Code</p>
+    <div class="controls">
+      <button class="stop" onclick="stop()">Shh</button>
+    </div>
+    <div id="sessions" class="sessions">
+      <div class="empty">No active sessions</div>
+    </div>
+    <script>
+      function truncate(id) {
+        if (id.length > 12) return id.slice(0, 8) + "\u2026";
+        return id;
+      }
+
+      function escapeHtml(s) {
+        const d = document.createElement("div");
+        d.textContent = s;
+        return d.innerHTML;
+      }
+
+      async function stop() {
+        await fetch("/stop", { method: "POST" });
+      }
+
+      async function toggleMute(id) {
+        await fetch(`/sessions/${encodeURIComponent(id)}/mute`, {
+          method: "POST",
+        });
+        refresh();
+      }
+
+      async function removeSession(id) {
+        await fetch(`/sessions/${encodeURIComponent(id)}/remove`, {
+          method: "POST",
+        });
+        refresh();
+      }
+
+      async function refresh() {
+        const res = await fetch("/sessions");
+        const sessions = await res.json();
+        const el = document.getElementById("sessions");
+
+        if (sessions.length === 0) {
+          el.innerHTML = '<div class="empty">No active sessions</div>';
+          return;
+        }
+
+        el.innerHTML = sessions
+          .map(
+            (s) => `
+          <div class="session ${s.muted ? "muted" : ""}">
+            <div class="session-info">
+              <span class="session-id" title="${escapeHtml(s.session_id)}">${escapeHtml(truncate(s.session_id))}</span>
+            </div>
+            <div class="session-actions">
+              <button class="${s.muted ? "mute-on" : ""}"
+                      onclick="toggleMute('${escapeHtml(s.session_id)}')">
+                ${s.muted ? "Unmute" : "Mute"}
+              </button>
+              <button class="remove" onclick="removeSession('${escapeHtml(s.session_id)}')"
+                      title="Remove session">&times;</button>
+            </div>
+          </div>
+        `,
+          )
+          .join("");
+      }
+
+      refresh();
+      setInterval(refresh, 3000);
+    </script>
+  </body>
+</html>
