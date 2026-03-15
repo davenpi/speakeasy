@@ -6,4 +6,6 @@ TTS output for Claude Code — hear your answers spoken aloud.
 
 - Use conventional commits (feat:, fix:, refactor:, test:, chore:, docs:)
 - Write tests for new behavior
+- NumPy-style docstrings
+- Type hints on all function signatures
 - No Co-Authored-By footers in commits or PRs
